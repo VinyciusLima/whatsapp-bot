@@ -1,7 +1,29 @@
 const { Client } = require('whatsapp-web.js');
-const QRCode = require('qrcode');          // adiciona essa
+const QRCode = require('qrcode');
 const cron = require('node-cron');
+const express = require('express');
 
+// ─── Servidor HTTP para exibir QR Code ─────────────────────────────────────
+const app = express();
+let qrAtual = null;
+
+app.get('/', async (req, res) => {
+  if (!qrAtual) {
+    return res.send('<h2>Aguardando QR Code...</h2><meta http-equiv="refresh" content="3">');
+  }
+  const img = await QRCode.toDataURL(qrAtual);
+  res.send(`
+    <h2>📱 Escaneie o QR Code no WhatsApp</h2>
+    <img src="${img}" style="width:300px"/>
+    <p>A página atualiza automaticamente a cada 30 segundos.</p>
+    <meta http-equiv="refresh" content="30">
+  `);
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🌐 Servidor rodando na porta ${PORT}`));
+
+// ─── Cliente WhatsApp ───────────────────────────────────────────────────────
 const client = new Client({
   puppeteer: {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
@@ -19,15 +41,16 @@ const PIX_CONFIG = {
   chave_pix: '45800339813',
   valor_parcela: 587.48,
   parcelas_total: 19,
-  data_inicio: new Date('2026-05-30') // primeira parcela
+  data_inicio: new Date('2026-05-30')
 };
 
 client.on('qr', (qr) => {
-  console.log('\n📱 ESCANEIE ESTE QR CODE:\n');
-  qrcode.generate(qr, { small: false });
+  console.log('📱 Novo QR gerado — acesse a URL pública do Railway para escanear');
+  qrAtual = qr;
 });
 
 client.on('ready', () => {
+  qrAtual = null;
   console.log('\n✅ WhatsApp pronto! Agendamentos ativos.\n');
   agendar_mensagens();
 });
@@ -40,11 +63,9 @@ function calcular_parcelas() {
   const hoje = new Date();
   const inicio = PIX_CONFIG.data_inicio;
 
-  // Quantos meses completos se passaram desde o início
   let meses = (hoje.getFullYear() - inicio.getFullYear()) * 12
             + (hoje.getMonth() - inicio.getMonth());
 
-  // Se ainda não chegou no dia de vencimento deste mês, não conta o mês atual
   if (hoje.getDate() < 30) meses = Math.max(0, meses - 1);
   else meses = Math.max(0, meses);
 
@@ -104,11 +125,9 @@ function gerar_mensagem(dia) {
 }
 
 // ─── Agendamentos cron ──────────────────────────────────────────────────────
-// Formato: segundo minuto hora dia mês dia-semana
-// Timezone America/Sao_Paulo para bater certo
 
 function agendar_mensagens() {
-  const hora = '09:00'; // horário de envio — ajuste se quiser
+  const hora = '09:00';
   const [h, m] = hora.split(':');
 
   const agendamentos = [
@@ -119,7 +138,6 @@ function agendar_mensagens() {
   ];
 
   for (const { dia, descricao } of agendamentos) {
-    // Cron: minuto hora dia * * (todo mês, naquele dia)
     const expr = `${m} ${h} ${dia} * *`;
 
     cron.schedule(expr, async () => {
