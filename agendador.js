@@ -1,5 +1,5 @@
 const { Client } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');          // adiciona essa
 const cron = require('node-cron');
 
 const client = new Client({
@@ -24,7 +24,7 @@ const PIX_CONFIG = {
 
 client.on('qr', (qr) => {
   console.log('\n📱 ESCANEIE ESTE QR CODE:\n');
-  qrcode.generate(qr, { small: true });
+  qrcode.generate(qr, { small: false });
 });
 
 client.on('ready', () => {
