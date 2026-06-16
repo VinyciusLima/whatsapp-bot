@@ -4,6 +4,7 @@ const cron = require('node-cron');
 
 const client = new Client({
   puppeteer: {
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
