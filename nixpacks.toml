@@ -1,0 +1,24 @@
+# nixpacks.toml
+[phases.setup]
+nixPkgs = [
+  "glib",
+  "nss",
+  "nspr",
+  "atk",
+  "cups",
+  "libdrm",
+  "dbus",
+  "at-spi2-atk",
+  "xorg.libX11",
+  "xorg.libxcb",
+  "xorg.libXcomposite",
+  "xorg.libXdamage",
+  "xorg.libXext",
+  "xorg.libXfixes",
+  "xorg.libXrandr",
+  "xorg.libxkbcommon",
+  "mesa",
+  "pango",
+  "cairo",
+  "alsa-lib"
+]
