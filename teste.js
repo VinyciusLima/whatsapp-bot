@@ -4,7 +4,7 @@ const qrcode = require('qrcode-terminal');
 const client = new Client();
 
 const PIX_CONFIG = {
-  contato: '554891629532@c.us',
+  contato: '554884757229@c.us',
   chave_pix: '45800339813',
   valor_parcela: 587.48,
   parcelas_total: 18,
