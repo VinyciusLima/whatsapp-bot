@@ -25,6 +25,7 @@ app.listen(PORT, () => console.log(`🌐 Servidor rodando na porta ${PORT}`));
 
 // ─── Cliente WhatsApp ───────────────────────────────────────────────────────
 const client = new Client({
+  authStrategy: new LocalAuth({ dataPath: '/app/.wwebjs_auth' }),
   puppeteer: {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
     args: [
