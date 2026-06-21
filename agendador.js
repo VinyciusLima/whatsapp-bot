@@ -1,9 +1,8 @@
-const { Client } = require('whatsapp-web.js');
+const { Client, LocalAuth } = require('whatsapp-web.js'); // ← LocalAuth importado
 const QRCode = require('qrcode');
 const cron = require('node-cron');
 const express = require('express');
 
-// ─── Servidor HTTP para exibir QR Code ─────────────────────────────────────
 const app = express();
 let qrAtual = null;
 
@@ -23,22 +22,26 @@ app.get('/', async (req, res) => {
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`🌐 Servidor rodando na porta ${PORT}`));
 
-// ─── Cliente WhatsApp ───────────────────────────────────────────────────────
 const client = new Client({
-  authStrategy: new LocalAuth({ dataPath: '/app/.wwebjs_auth' }),
+  authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+    headless: true,
+    protocolTimeout: 120000,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-gpu'
-    ]
-  }
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-gpu',
+    ],
+  },
 });
 
 const PIX_CONFIG = {
-  contato: '554899824325@c.us',
+  contato: '554899824325',              // ← só o número, sem @c.us
   chave_pix: '45800339813',
   valor_parcela: 587.48,
   parcelas_total: 19,
@@ -125,6 +128,31 @@ function gerar_mensagem(dia) {
   }
 }
 
+// ─── Envio com retry e guarda ───────────────────────────────────────────────
+
+async function enviarMensagem(numero, texto, tentativas = 3) {
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      await client.sendMessage(`${numero}@c.us`, texto); // ← número já vem formatado
+      return true;
+    } catch (err) {
+      console.error(`❌ Tentativa ${i + 1} falhou:`, err.message);
+      if (i < tentativas - 1) await new Promise(r => setTimeout(r, 5000));
+    }
+  }
+  console.error(`❌ Todas as tentativas falharam para ${numero}`);
+  return false;
+}
+
+async function enviarComGuarda(numero, texto) {
+  const state = await client.getState();
+  if (state !== 'CONNECTED') {
+    console.warn('⚠️ Cliente não conectado, estado:', state);
+    return false;
+  }
+  return await enviarMensagem(numero, texto);
+}
+
 // ─── Agendamentos cron ──────────────────────────────────────────────────────
 
 function agendar_mensagens() {
@@ -143,12 +171,8 @@ function agendar_mensagens() {
 
     cron.schedule(expr, async () => {
       console.log(`\n📤 [Dia ${dia}] ${descricao} — enviando...`);
-      try {
-        await client.sendMessage(PIX_CONFIG.contato, gerar_mensagem(dia));
-        console.log(`✅ [Dia ${dia}] Mensagem enviada!`);
-      } catch (e) {
-        console.error(`❌ [Dia ${dia}] Erro:`, e.message);
-      }
+      const ok = await enviarComGuarda(PIX_CONFIG.contato, gerar_mensagem(dia)); // ← usa a guarda
+      if (ok) console.log(`✅ [Dia ${dia}] Mensagem enviada!`);
     }, {
       timezone: 'America/Sao_Paulo'
     });
